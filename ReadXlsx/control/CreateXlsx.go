@@ -3,17 +3,19 @@ package control
 import (
 	//"github.com/Luxurioust/excelize"
 
+	"ReadXlsx/tools"
 	"fmt"
 	"github.com/tealeg/xlsx"
 	_ "github.com/tealeg/xlsx"
 )
 
 type NewXlsx struct {
-	file   *xlsx.File
-	sheet  *xlsx.Sheet
-	path   string
-	NIndex int
-	Key    string
+	file       *xlsx.File
+	sheet      *xlsx.Sheet
+	path       string
+	fatherPath string
+	NIndex     int
+	Key        string
 }
 
 func (f *NewXlsx) Init(key string) {
@@ -31,6 +33,7 @@ func (f *NewXlsx) Init(key string) {
 func (f *NewXlsx) AddToUserInfo(info *UserDataInfo) {
 
 	f.path = info.SaveFilePath
+	f.fatherPath = info.FileDicPath
 	if len(f.sheet.Rows) < FILE_MAX_ROW {
 		row := f.sheet.AddRow()
 		for i := 0; i < info.CellLen; i++ {
@@ -39,23 +42,27 @@ func (f *NewXlsx) AddToUserInfo(info *UserDataInfo) {
 		}
 		if len(f.sheet.Rows) == FILE_MAX_ROW { //保存文件
 
-			err := f.file.Save(fmt.Sprintf("%s-%d.xlsx", info.SaveFilePath, f.NIndex))
-			if err != nil {
-				fmt.Printf(err.Error())
-			}
 			createNew(f)
+			G_WG.Add(1)
+			go gofuncSave(f)
 		}
 
 	}
 }
 
+func gofuncSave(f *NewXlsx) {
+	defer G_WG.Done()
+	tools.CreareDirFile(f.fatherPath)
+	err := f.file.Save(fmt.Sprintf("%s-%d.xlsx", f.path, f.NIndex))
+	if err != nil {
+		fmt.Printf(err.Error())
+	}
+}
 func (f *NewXlsx) SaveLessAll() {
-	if len(f.sheet.Rows) > 0 {
-		fmt.Println("SaveLessAll", f.path, f.NIndex, len(f.sheet.Rows))
-		err := f.file.Save(fmt.Sprintf("%s-%d.xlsx", f.path, f.NIndex))
-		if err != nil {
-			fmt.Printf(err.Error())
-		}
+	if len(f.sheet.Rows) > 100 {
+
+		G_WG.Add(1)
+		go gofuncSave(f)
 	}
 
 }
@@ -65,6 +72,7 @@ func createNew(f *NewXlsx) {
 	newxlsx := new(NewXlsx) // NewXlsx{}
 	newxlsx.Init(f.Key)
 	newxlsx.path = f.path
+	newxlsx.fatherPath = f.fatherPath
 	newxlsx.NIndex = f.NIndex + 1
 	xlsxMap[newxlsx.Key] = newxlsx
 

@@ -14,7 +14,7 @@ func init() {
 	fmt.Println("db ==> init")
 	//数据库链接
 	var err error
-	DB_Write, err = xorm.NewEngine("mysql", "root:root@/xorm?charset=utf8")
+	DB_Write, err = xorm.NewEngine("mysql", "root:root@/db_openinfo?charset=utf8")
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -33,4 +33,19 @@ func init() {
 
 	//名称映射规则主要负责结构体名称到表名和结构体field到表字段的名称映射
 	DB_Write.SetTableMapper(core.SnakeMapper{})
+}
+
+func PageGetPages(engine *xorm.Engine) (total int64) {
+	total, _ = engine.Table("tb_info_2").Where("CtfTp = ?", "ID").Count(new(TbInfo))
+	return total
+}
+
+func PageGetAll(engine *xorm.Engine, limit, index int) (infoList *[]TbInfo, err error) {
+	infoList2 := make([]TbInfo, 0)
+
+	sql := "select * from tb_info_2 where CtfTp = 'ID' and  Id > (select Id from tb_info_2 order by Id limit %d,1) limit %d"
+
+	engine.SQL(fmt.Sprintf(sql, index*limit, limit)).Find(&infoList2)
+	//err = engine.Table("tb_info_2").Where("CtfTp = ?", "ID").Limit(limit,index*limit).Find(&infoList2)
+	return &infoList2, err
 }
